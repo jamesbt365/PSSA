@@ -10,11 +10,19 @@ namespace ExponentialSmoothing
     [PluginName("ExponentialSmoothingFilter")]
     public class ExponentialSmoothingPlugin : IPositionedPipelineElement<IDeviceReport>
     {
-        [Property("Max Pressure"), ToolTip("The maximum pressure value.")]
-        public float max_pressure { set; get; }
+        [Property("Min Pressure"), ToolTip("The pressure value where scaling starts.")]
+        public float MinPressure { set; get; }
+        [Property("Max Pressure"), ToolTip("The pressure value where scaling ends.")]
+        public float MaxPressure { set; get; }
 
-        [Property("Smoothing Factor"), ToolTip("Controls the amount of smoothing applied.")]
-        public float smoothingFactor { set; get; }
+        [Property("Max smoothing weight"), ToolTip("The most smoothing will be at the maximum pressure.")]
+        public float SmoothingFactor { set; get; }
+
+        [Property("Minimum smoothing weight"), ToolTip("The least smoothing will be at a given point above the minimum pressure.")]
+        public float MinWeight { set; get; }
+        
+        [BooleanProperty("Smooth below minimum pressure", ""), ToolTip("Dictates if smoothing is applied before minimum pressure.")]
+        public bool BaseSmoothing { set; get; }
 
         private ITabletReport? lastReport;
 
@@ -32,11 +40,7 @@ namespace ExponentialSmoothing
                     float smoothedX = SmoothCursor(emaWeightX, report.Position.X, lastReport.Position.X);
                     float smoothedY = SmoothCursor(emaWeightY, report.Position.Y, lastReport.Position.Y);
 
-
                     report.Position = new Vector2(smoothedX, smoothedY);
-
-                    Console.WriteLine($"Smoothed X: {smoothedX}, Smoothed Y: {smoothedY}");
-                    Console.WriteLine($"EMA Weight X: {emaWeightX}, EMA Weight Y: {emaWeightY}");
                 }
 
                 lastReport = report;
@@ -47,16 +51,28 @@ namespace ExponentialSmoothing
 
         public PipelinePosition Position => PipelinePosition.PostTransform;
 
+
+
         private float CalculateEMAWeight(float pressure)
         {
-            float normalizedPressure = pressure / max_pressure;
+            float normalizedPressure = pressure / MaxPressure;
 
-            float clampedNormalizedPressure = Math.Min(normalizedPressure, 1.0f);
+            float startIncreasePressure = MinPressure / MaxPressure;
+            float clampedNormalizedPressure = Math.Max(Math.Min((normalizedPressure - startIncreasePressure) / (1.0f - startIncreasePressure), 1.0f), 0.0f);
+            float emaWeight;
 
-            float emaWeight = (1 - clampedNormalizedPressure) + smoothingFactor * clampedNormalizedPressure;
+            if (!BaseSmoothing && normalizedPressure < startIncreasePressure)
+            {
+                emaWeight = 1.0f;
+            }
+            else
+            {
+                emaWeight = (1 - clampedNormalizedPressure) * MinWeight + (SmoothingFactor * clampedNormalizedPressure);
+            }
+            
             return emaWeight;
         }
-        
+
         private float SmoothCursor(float weight, float currentPosition, float lastPosition)
         {
             float smoothedValue = weight * currentPosition + (1 - weight) * lastPosition;
