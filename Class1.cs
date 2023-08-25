@@ -5,20 +5,21 @@ using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
 using OpenTabletDriver.Plugin.Timing;
 
-namespace ExponentialSmoothing
+namespace PSSA
 {
-    [PluginName("ExponentialSmoothingFilter")]
-    public class ExponentialSmoothingPlugin : IPositionedPipelineElement<IDeviceReport>
+    [PluginName("PSSA")]
+    public class PSSA : IPositionedPipelineElement<IDeviceReport>
     {
-        [Property("Min Pressure"), ToolTip("The pressure value where scaling starts."), DefaultPropertyValue(0)]
+        [Property("Min Pressure"), ToolTip("The pressure value where scaling starts."), DefaultPropertyValue(0.0f)]
         public float MinPressure { set; get; }
-        [Property("Max Pressure"), ToolTip("The pressure value where scaling ends."), DefaultPropertyValue(8191)]
+
+        [Property("Max Pressure"), ToolTip("The pressure value where scaling ends."), DefaultPropertyValue(8191.0f)]
         public float MaxPressure { set; get; }
 
-        [Property("Max smoothing weight"), ToolTip("The most smoothing will be at the maximum pressure."), DefaultPropertyValue(0.5)]
+        [Property("Max smoothing weight"), ToolTip("The most smoothing will be at the maximum pressure."), DefaultPropertyValue(0.5f)]
         public float SmoothingFactor { set; get; }
 
-        [Property("Minimum smoothing weight"), ToolTip("The least smoothing will be at a given point above the minimum pressure."), DefaultPropertyValue(1)]
+        [Property("Minimum smoothing weight"), ToolTip("The least smoothing will be at a given point above the minimum pressure."), DefaultPropertyValue(1.0f)]
         public float MinWeight { set; get; }
         
         [BooleanProperty("Smooth below minimum pressure", ""), ToolTip("Dictates if smoothing is applied before minimum pressure.")]
