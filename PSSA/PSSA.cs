@@ -45,6 +45,9 @@ namespace PSSA
         [BooleanProperty("Smooth below minimum pressure", ""), ToolTip("Dictates if smoothing is applied before minimum pressure.")]
         public bool BaseSmoothing { set; get; }
 
+        [BooleanProperty("Reverse Smoothing", ""), ToolTip("Reverse the smoothing behavior.")]
+        public bool ReverseSmoothing { set; get; }
+
         private float _MinPressure;
         private float _MaxPressure;
         private float _MinWeight;
@@ -60,13 +63,23 @@ namespace PSSA
             {
                 if (lastReport != null)
                 {
+                    if (ReverseSmoothing) {
+                    float emaWeightX = CalculateEMAWeightReversed(report.Pressure);
+                    float emaWeightY = CalculateEMAWeightReversed(report.Pressure);
+
+                    float smoothedX = SmoothCursor(emaWeightX, report.Position.X, lastReport.Position.X);
+                    float smoothedY = SmoothCursor(emaWeightY, report.Position.Y, lastReport.Position.Y);
+                    report.Position = new Vector2(smoothedX, smoothedY);
+                    }
+                    else {
                     float emaWeightX = CalculateEMAWeight(report.Pressure);
                     float emaWeightY = CalculateEMAWeight(report.Pressure);
 
                     float smoothedX = SmoothCursor(emaWeightX, report.Position.X, lastReport.Position.X);
                     float smoothedY = SmoothCursor(emaWeightY, report.Position.Y, lastReport.Position.Y);
-
                     report.Position = new Vector2(smoothedX, smoothedY);
+                    }
+
                 }
 
                 lastReport = report;
@@ -98,6 +111,26 @@ namespace PSSA
             
             return emaWeight;
         }
+
+        private float CalculateEMAWeightReversed(float pressure)
+        {
+            float normalizedPressure = (pressure - MinPressure) / (MaxPressure - MinPressure);
+            
+            float clampedNormalizedPressure = Math.Max(Math.Min(normalizedPressure, 1.0f), 0.0f);
+            float emaWeight;
+
+            if (!BaseSmoothing && normalizedPressure < 0)
+            {
+                emaWeight = MaxWeight;
+            }
+            else
+            {
+                emaWeight = (1 - clampedNormalizedPressure) * MaxWeight + (MinWeight * clampedNormalizedPressure);
+            }
+            
+            return emaWeight;
+        }
+
 
         private float SmoothCursor(float weight, float currentPosition, float lastPosition)
         {
