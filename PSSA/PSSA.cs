@@ -1,4 +1,5 @@
 ﻿﻿using System;
+using System.Dynamic;
 using System.Numerics;
 using OpenTabletDriver.Plugin.Attributes;
 using OpenTabletDriver.Plugin.Output;
@@ -10,20 +11,44 @@ namespace PSSA
     [PluginName("PSSA")]
     public class PSSA : IPositionedPipelineElement<IDeviceReport>
     {
-        [Property("Min Pressure"), ToolTip("The pressure value where scaling starts."), DefaultPropertyValue(0.0f)]
-        public float MinPressure { set; get; }
+        [Property("Min Pressure"), ToolTip("The pressure value where scaling starts."), DefaultPropertyValue(1f)]
+        public float MinPressure 
+        {
+            set => this._MinPressure = Math.Max(value, 1f);
+            get => this._MinPressure;
+        }
 
-        [Property("Max Pressure"), ToolTip("The pressure value where scaling ends."), DefaultPropertyValue(8191.0f)]
-        public float MaxPressure { set; get; }
-
-        [Property("Max smoothing weight"), ToolTip("The most smoothing will be at the maximum pressure."), DefaultPropertyValue(0.5f)]
-        public float SmoothingFactor { set; get; }
+        [Property("Max Pressure"), ToolTip("The pressure value where scaling ends."), DefaultPropertyValue(8191f)]
+        public float MaxPressure 
+        { 
+            set => this._MaxPressure = Math.Max(value, 1f);
+            get => this._MaxPressure;
+        }
+        
 
         [Property("Minimum smoothing weight"), ToolTip("The least smoothing will be at a given point above the minimum pressure."), DefaultPropertyValue(1.0f)]
-        public float MinWeight { set; get; }
+        public float MinWeight 
+        {
+            set => this._MinWeight = Math.Clamp(value, 0f, 1f);
+            get => this._MinWeight;
+        
+        }
+
+        [Property("Maximum smoothing weight"), ToolTip("The most smoothing will be at the maximum pressure."), DefaultPropertyValue(0.5f)]
+        public float MaxWeight 
+        { 
+            set => this._MaxWeight = Math.Clamp(value, 0f, 1f);
+            get => this._MaxWeight;
+        }
+
         
         [BooleanProperty("Smooth below minimum pressure", ""), ToolTip("Dictates if smoothing is applied before minimum pressure.")]
         public bool BaseSmoothing { set; get; }
+
+        private float _MinPressure;
+        private float _MaxPressure;
+        private float _MinWeight;
+        private float _MaxWeight;
 
         private ITabletReport? lastReport;
 
@@ -68,7 +93,7 @@ namespace PSSA
             }
             else
             {
-                emaWeight = (1 - clampedNormalizedPressure) * MinWeight + (SmoothingFactor * clampedNormalizedPressure);
+                emaWeight = (1 - clampedNormalizedPressure) * MinWeight + (MaxWeight * clampedNormalizedPressure);
             }
             
             return emaWeight;
