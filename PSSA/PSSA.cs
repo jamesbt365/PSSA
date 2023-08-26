@@ -64,20 +64,10 @@ namespace PSSA
                 if (lastReport != null)
                 {
                     if (ReverseSmoothing) {
-                    float emaWeightX = CalculateEMAWeightReversed(report.Pressure);
-                    float emaWeightY = CalculateEMAWeightReversed(report.Pressure);
-
-                    float smoothedX = SmoothCursor(emaWeightX, report.Position.X, lastReport.Position.X);
-                    float smoothedY = SmoothCursor(emaWeightY, report.Position.Y, lastReport.Position.Y);
-                    report.Position = new Vector2(smoothedX, smoothedY);
+                        report.Position = SmoothCursor(CalculateEMAWeightReversed(report.Pressure), report.Position, lastReport.Position);
                     }
                     else {
-                    float emaWeightX = CalculateEMAWeight(report.Pressure);
-                    float emaWeightY = CalculateEMAWeight(report.Pressure);
-
-                    float smoothedX = SmoothCursor(emaWeightX, report.Position.X, lastReport.Position.X);
-                    float smoothedY = SmoothCursor(emaWeightY, report.Position.Y, lastReport.Position.Y);
-                    report.Position = new Vector2(smoothedX, smoothedY);
+                        report.Position = SmoothCursor(CalculateEMAWeight(report.Pressure), report.Position, lastReport.Position);
                     }
 
                 }
@@ -90,53 +80,44 @@ namespace PSSA
 
         public PipelinePosition Position => PipelinePosition.PostTransform;
 
-
-
         private float CalculateEMAWeight(float pressure)
         {
             float normalizedPressure = pressure / MaxPressure;
 
             float startIncreasePressure = MinPressure / MaxPressure;
-            float clampedNormalizedPressure = Math.Max(Math.Min((normalizedPressure - startIncreasePressure) / (1.0f - startIncreasePressure), 1.0f), 0.0f);
-            float emaWeight;
+            float clampedNormalizedPressure = Math.Clamp((normalizedPressure - startIncreasePressure) / (1.0f - startIncreasePressure), 0.0f, 1.0f);
+
 
             if (!BaseSmoothing && normalizedPressure < startIncreasePressure)
             {
-                emaWeight = 1.0f;
+                return 1.0f;
             }
-            else
-            {
-                emaWeight = (1 - clampedNormalizedPressure) * MinWeight + (MaxWeight * clampedNormalizedPressure);
-            }
-            
-            return emaWeight;
+            return (1 - clampedNormalizedPressure) * MinWeight + (MaxWeight * clampedNormalizedPressure);
         }
 
         private float CalculateEMAWeightReversed(float pressure)
         {
             float normalizedPressure = (pressure - MinPressure) / (MaxPressure - MinPressure);
+            // No idea if this is right....
             
-            float clampedNormalizedPressure = Math.Max(Math.Min(normalizedPressure, 1.0f), 0.0f);
-            float emaWeight;
+            float clampedNormalizedPressure = Math.Clamp(normalizedPressure, 0.0f, 1.0f);
 
+
+            // Base smoothing kinda has to be enabled to be "used correctly"
+            // The way ema works makes reversal awkward anyway, I don't know how "useful" this is.
             if (!BaseSmoothing && normalizedPressure < 0)
             {
-                emaWeight = MaxWeight;
+                return 1.0f;
             }
-            else
-            {
-                emaWeight = (1 - clampedNormalizedPressure) * MaxWeight + (MinWeight * clampedNormalizedPressure);
-            }
-            
-            return emaWeight;
+            return (1 - clampedNormalizedPressure) * MaxWeight + (MinWeight * clampedNormalizedPressure);
         }
 
-
-        private float SmoothCursor(float weight, float currentPosition, float lastPosition)
+        private Vector2 SmoothCursor(float weight, Vector2 currentPosition, Vector2 lastPosition)
         {
-            float smoothedValue = weight * currentPosition + (1 - weight) * lastPosition;
-            return smoothedValue;
+            Vector2 smoothedPosition = weight * currentPosition + (1 - weight) * lastPosition;
+            return smoothedPosition;
         }
+
 
 
     }
